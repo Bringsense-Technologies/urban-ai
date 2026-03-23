@@ -42,8 +42,8 @@ This repository provides a GPU-enabled C++ development stack based on NVIDIA Dee
 You can run the scripts in `setup/`:
 
 - `setup/01_nvidia_drivers.sh`
-- `setup/03_docker.sh`
-- `setup/02_nvidia_container_toolkit.sh`
+- `setup/02_docker.sh`
+- `setup/03_nvidia_container_toolkit.sh`
 - `setup/04_vscode_extensions.sh`
 
 Or run them in order via the root helper:
@@ -55,13 +55,14 @@ Example:
 ```bash
 chmod +x setup/run.sh setup/*.sh
 ./setup/run.sh
+./setup/run.sh --dry-run
 
 # or run steps manually
 chmod +x setup/*.sh
 ./setup/01_nvidia_drivers.sh
 # reboot if you installed/updated drivers
-./setup/03_docker.sh
-./setup/02_nvidia_container_toolkit.sh
+./setup/02_docker.sh
+./setup/03_nvidia_container_toolkit.sh
 ./setup/04_vscode_extensions.sh
 ```
 
