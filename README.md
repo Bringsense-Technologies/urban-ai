@@ -2,7 +2,7 @@
 
 This repository provides a GPU-enabled C++ development stack based on NVIDIA DeepStream, with:
 
-- Two build targets: `stable` and `advanced`
+- Two build targets (`stable` and `advanced`), with `stable` currently commented out in `docker-compose.yml`
 - Project root mapped from host <project> to container `/root/project`
 - C++ source folder mapped from host `<project>/source` to container `/root/project/source`
 - VS Code Dev Container support (`.devcontainer/devcontainer.json`)
@@ -42,8 +42,8 @@ This repository provides a GPU-enabled C++ development stack based on NVIDIA Dee
 You can run the scripts in `setup/`:
 
 - `setup/01_nvidia_drivers.sh`
-- `setup/02_nvidia_container_toolkit.sh`
 - `setup/03_docker.sh`
+- `setup/02_nvidia_container_toolkit.sh`
 - `setup/04_vscode_extensions.sh`
 
 Or run them in order via the root helper:
@@ -60,8 +60,8 @@ chmod +x setup/run.sh setup/*.sh
 chmod +x setup/*.sh
 ./setup/01_nvidia_drivers.sh
 # reboot if you installed/updated drivers
-./setup/02_nvidia_container_toolkit.sh
 ./setup/03_docker.sh
+./setup/02_nvidia_container_toolkit.sh
 ./setup/04_vscode_extensions.sh
 ```
 
@@ -103,13 +103,14 @@ Inside the container, this path is:
 
 ## 3. Build images
 
-Build `advanced` (default dev target):
+Build `advanced` (current active/default dev target):
 
 ```bash
 docker compose build advanced
 ```
 
-Build `stable`:
+`stable` is currently commented out in `docker-compose.yml`.
+To use it again, uncomment the `stable` service block first, then build:
 
 ```bash
 docker compose build stable
@@ -173,16 +174,40 @@ Make it executable:
 chmod +x ./container/start.sh
 ```
 
-Run it with `PROJECT_PREFIX` and a numeric suffix:
+Run it with `PROJECT_PREFIX` and an optional numeric suffix:
 
 ```bash
 PROJECT_PREFIX=~/Development/MyProject ./container/start.sh 10
+```
+
+If no number is provided, it defaults to `1`:
+
+```bash
+PROJECT_PREFIX=~/Development/MyProject ./container/start.sh
 ```
 
 This starts container `MyProject10` and maps:
 
 - host: `~/Development/MyProject10`
 - container: `/root/project`
+
+If `PROJECT_PREFIX` is not set, the script uses your current directory as host path.
+
+- Container name base is the current folder name.
+- If the folder name ends with digits (for example `MyProject12`), that suffix is used.
+- If the folder name has no trailing digits, suffix `1` is used.
+
+Examples:
+
+```bash
+cd ~/Development/MyProject12
+./container/start.sh
+# starts container MyProject12 and maps ~/Development/MyProject12 -> /root/project
+
+cd ~/Development/MyProject
+./container/start.sh
+# starts container MyProject1 and maps ~/Development/MyProject -> /root/project
+```
 
 Inside that container, C++ sources in the host checkout's `source/` folder are available at `/root/project/source`.
 
@@ -299,6 +324,8 @@ Stop all services:
 ```bash
 docker compose down
 ```
+
+Note: `stable` commands apply only after re-enabling the commented `stable` service in `docker-compose.yml`.
 
 Stop services and remove shared cache volume:
 

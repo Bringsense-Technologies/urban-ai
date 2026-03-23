@@ -1,6 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+disable_invalid_docker_repo() {
+  local docker_list="/etc/apt/sources.list.d/docker.list"
+
+  if [[ ! -f "${docker_list}" ]]; then
+    return
+  fi
+
+  if grep -Eq '^deb .*download\.docker\.com/linux/ubuntu ' "${docker_list}" \
+    && ! grep -Eq '^deb .*download\.docker\.com/linux/ubuntu (noble|jammy|focal|bionic) ' "${docker_list}"; then
+    local backup="${docker_list}.disabled.$(date +%Y%m%d%H%M%S)"
+    echo "Disabling invalid Docker apt source in ${docker_list} (backup: ${backup})"
+    sudo mv "${docker_list}" "${backup}"
+  fi
+}
+
+disable_invalid_docker_repo
+
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
   && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' | \

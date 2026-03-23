@@ -3,49 +3,51 @@ services:
   # GROUP 1: STABLE (Production Ready)
   # Uses Ubuntu 22.04/24.04 base with proven C++20 tools
   # ---------------------------------------------------------------------------
-  stable:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        # DeepStream 7.0 is usually based on Ubuntu 22.04, but very stable
-        BASE_IMAGE_URL: "nvcr.io/nvidia/deepstream:7.0-triton-multiarch"
+  # stable:
+  #   profiles: ["stable"]
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     args:
+  #       # DeepStream 7.0 is usually based on Ubuntu 22.04, but very stable
+  #       BASE_IMAGE_URL: "nvcr.io/nvidia/deepstream:7.0-triton-multiarch"
 
-        # GCC 12 is the standard stable for C++20
-        GCC_VERSION: "12"
+  #       # GCC 12 is the standard stable for C++20
+  #       GCC_VERSION: "12"
 
-        # CMake 3.28 is solid
-        CMAKE_VERSION: "3.28.3"
+  #       # CMake 3.28 is solid
+  #       CMAKE_VERSION: "3.28.3"
 
-        # LibTorch 2.2.1 (CUDA 12.1) - Stable
-        TORCH_URL: "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.2.1%2Bcu121.zip"
+  #       # LibTorch 2.2.1 (CUDA 12.1) - Stable
+  #       TORCH_URL: "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.2.1%2Bcu121.zip"
 
-        EIGEN_VERSION: "3.4.0"
+  #       EIGEN_VERSION: "3.4.0"
+  #       SKIP_OS_UPGRADE: "${SKIP_OS_UPGRADE:-0}"
 
-    image: ai-devbox:stable
-    container_name: ai-devbox-stable
-    gpus: all
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - CCACHE_DIR=/root/.ccache
-      - CCACHE_MAXSIZE=20G
-      - CONTAINER_NAME=ai-devbox-stable
-      - CONTAINER_IMAGE_NAME=ai-devbox:stable
-      - CONTAINER_IMAGE_SHA=${AI_DEVBOX_STABLE_SHA:-unknown}
-    volumes:
-      - ./:/root/project
-      - ccache-data:/root/.ccache
-    healthcheck:
-      test: ["CMD-SHELL", "nvidia-smi >/dev/null 2>&1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    command: ["tail", "-f", "/dev/null"]
+  #   image: ai-devbox:stable
+  #   container_name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-stable
+  #   gpus: all
+  #   cap_add:
+  #     - SYS_PTRACE
+  #   security_opt:
+  #     - seccomp:unconfined
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=all
+  #     - CCACHE_DIR=/root/.ccache
+  #     - CCACHE_MAXSIZE=20G
+  #     - CONTAINER_NAME=${COMPOSE_PROJECT_NAME:-ai-devbox}-stable
+  #     - CONTAINER_IMAGE_NAME=ai-devbox:stable
+  #     - CONTAINER_IMAGE_SHA=${AI_DEVBOX_STABLE_SHA:-unknown}
+  #   volumes:
+  #     - ./:/root/project
+  #     - ccache-data:/root/.ccache
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "nvidia-smi >/dev/null 2>&1"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 20s
+  #   command: ["tail", "-f", "/dev/null"]
 
   # ---------------------------------------------------------------------------
   # GROUP 2: Advanced
@@ -56,9 +58,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Assuming DeepStream 7.1+ or 8.0 is out (based on Ubuntu 24.04)
-        # IF NOT AVAILABLE YET, use the latest -devel image
-        BASE_IMAGE_URL: "nvcr.io/nvidia/deepstream:8.0-triton-multiarch"
+        # Configurable base image (default: DeepStream; override via ADVANCED_BASE_IMAGE_URL)
+        BASE_IMAGE_URL: "${ADVANCED_BASE_IMAGE_URL:-nvcr.io/nvidia/deepstream:8.0-triton-multiarch}"
 
         # GCC 14/15 for C++23 and C++26 experimental support
         GCC_VERSION: "14"
@@ -71,9 +72,10 @@ services:
         TORCH_URL: "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.5.1%2Bcu121.zip"
 
         EIGEN_VERSION: "5.0.0"
+        SKIP_OS_UPGRADE: "${SKIP_OS_UPGRADE:-0}"
 
     image: ai-devbox:advanced
-    container_name: ai-devbox-advanced
+    container_name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-advanced
     gpus: all
     restart: unless-stopped
     cap_add:
@@ -84,7 +86,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - CCACHE_DIR=/root/.ccache
       - CCACHE_MAXSIZE=20G
-      - CONTAINER_NAME=ai-devbox-advanced
+      - CONTAINER_NAME=${COMPOSE_PROJECT_NAME:-ai-devbox}-advanced
       - CONTAINER_IMAGE_NAME=ai-devbox:advanced
       - CONTAINER_IMAGE_SHA=${AI_DEVBOX_ADVANCED_SHA:-unknown}
     volumes:
@@ -100,4 +102,4 @@ services:
 
 volumes:
   ccache-data:
-    name: ai-devbox-ccache
+    name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-ccache

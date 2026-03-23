@@ -2,7 +2,7 @@
 # ARGUMENTS (Global Scope)
 # These must be defined before FROM to be used in the FROM line
 # -----------------------------------------------------------------------------
-ARG BASE_IMAGE_URL
+ARG BASE_IMAGE_URL=ubuntu:24.04
 FROM ${BASE_IMAGE_URL}
 
 # -----------------------------------------------------------------------------
@@ -13,6 +13,7 @@ ARG GCC_VERSION
 ARG CMAKE_VERSION
 ARG TORCH_URL
 ARG EIGEN_VERSION
+ARG SKIP_OS_UPGRADE=0
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Echo configuration for debugging logs
@@ -25,7 +26,11 @@ RUN echo "Building AI Stack with:" && \
 # -----------------------------------------------------------------------------
 # 1. SYSTEM & COMPILER SETUP
 # -----------------------------------------------------------------------------
-RUN apt-get update && apt-get install -y \
+# Update Ubuntu packages to the latest available versions in the base image
+# Set SKIP_OS_UPGRADE=1 to bypass full-upgrade during build
+RUN apt-get update \
+    && if [ "${SKIP_OS_UPGRADE}" != "1" ]; then apt-get -y full-upgrade; fi \
+    && apt-get install -y \
     software-properties-common \
     wget \
     unzip \
