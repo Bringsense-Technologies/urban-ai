@@ -40,3 +40,4 @@ jobs:
           grep -q 'Dependency matrix' README.md
           grep -q 'OpenCV' README.md
           grep -q 'REQUIRE_TORCH_SHA256' .env.example
+          grep -q 'ZED_SDK_MAJOR' .env.example

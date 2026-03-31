@@ -2,6 +2,9 @@
 # ARGUMENTS (Global Scope – available in FROM lines)
 # =============================================================================
 ARG BASE_IMAGE_URL=ubuntu:24.04
+ARG ZED_SDK_MAJOR=5
+ARG ZED_SDK_MINOR=2
+ARG ZED_CUDA_MAJOR=12
 
 # =============================================================================
 # STAGE 1: Downloader
@@ -65,6 +68,11 @@ ARG REQUIRE_TORCH_SHA256=0
 ARG EIGEN_VERSION
 ARG CCACHE_MAXSIZE="20G"
 ARG SKIP_OS_UPGRADE=0
+ARG INSTALL_ZED_SDK=0
+ARG ZED_SDK_MAJOR=5
+ARG ZED_SDK_MINOR=2
+ARG ZED_CUDA_MAJOR=12
+ARG ZED_GL=0
 ARG DEBIAN_FRONTEND=noninteractive
 
 LABEL org.opencontainers.image.title="AI DevBox" \
@@ -76,7 +84,11 @@ LABEL org.opencontainers.image.title="AI DevBox" \
     ai.devbox.torch_sha256="${TORCH_SHA256}" \
     ai.devbox.require_torch_sha256="${REQUIRE_TORCH_SHA256}" \
     ai.devbox.eigen_version="${EIGEN_VERSION}" \
-    ai.devbox.ccache_maxsize="${CCACHE_MAXSIZE}"
+    ai.devbox.ccache_maxsize="${CCACHE_MAXSIZE}" \
+    ai.devbox.zed_sdk_major="${ZED_SDK_MAJOR}" \
+    ai.devbox.zed_sdk_minor="${ZED_SDK_MINOR}" \
+    ai.devbox.zed_cuda_major="${ZED_CUDA_MAJOR}" \
+    ai.devbox.install_zed_sdk="${INSTALL_ZED_SDK}"
 
 RUN echo "Building AI Stack with:" && \
     echo "  Base: ${BASE_IMAGE_URL}" && \
@@ -142,10 +154,61 @@ COPY --from=downloader /opt/eigen /opt/eigen
 ENV Torch_DIR=/opt/libtorch/share/cmake/Torch
 ENV LD_LIBRARY_PATH=/opt/libtorch/lib:$LD_LIBRARY_PATH
 
+# -----------------------------------------------------------------------------
+# 4. ZED SDK (optional – set INSTALL_ZED_SDK=1 to enable)
+# Ubuntu version is auto-detected from the base image so the correct installer
+# is fetched regardless of which DeepStream release is used as the base.
+# skip_cuda preserves the CUDA stack already provided by the DeepStream base.
+# skip_tools keeps the image smaller; GUI tools are in the zed-gl service.
+# -----------------------------------------------------------------------------
+RUN if [ "${INSTALL_ZED_SDK}" = "1" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends \
+            lsb-release \
+            less \
+            udev \
+            zstd \
+            sudo \
+            libpng-dev \
+            libgomp1 \
+            python3-numpy \
+        && rm -rf /var/lib/apt/lists/* \
+        && UBUNTU_YEAR=$(. /etc/os-release && echo "${VERSION_ID%.*}") \
+        && wget -q -O ZED_SDK.run \
+            "https://download.stereolabs.com/zedsdk/${ZED_SDK_MAJOR}.${ZED_SDK_MINOR}/cu${ZED_CUDA_MAJOR}/ubuntu${UBUNTU_YEAR}" \
+        && chmod +x ZED_SDK.run \
+        && ./ZED_SDK.run -- silent skip_tools skip_cuda \
+        && ln -sf /usr/lib/x86_64-linux-gnu/libusb-1.0.so.0 \
+                  /usr/lib/x86_64-linux-gnu/libusb-1.0.so \
+        && rm ZED_SDK.run; \
+    fi
+
+# -----------------------------------------------------------------------------
+# 5. ZED GL support (optional – requires INSTALL_ZED_SDK=1 and ZED_GL=1)
+# Adds OpenGL libraries and ZED GUI tool prerequisites (ZED Explorer, etc.).
+# On the host run: xhost +si:localuser:root before launching the zed-gl service.
+# -----------------------------------------------------------------------------
+RUN if [ "${ZED_GL}" = "1" ]; then \
+        apt-get update \
+        && apt-get install -y --no-install-recommends \
+            libegl1 \
+            libgles2 \
+            libgl1 \
+            mesa-utils \
+            python3-pyopengl \
+        && rm -rf /var/lib/apt/lists/* \
+        && mkdir -p /root/Documents/ZED/; \
+    fi
+
+# ZED SDK paths – exported unconditionally; harmless when SDK is not installed.
+ENV ZED_SDK_DIR=/usr/local/zed
+ENV LD_LIBRARY_PATH=/usr/local/zed/lib:$LD_LIBRARY_PATH
+
 RUN torch_ver="$(tr -d '[:space:]' < /opt/libtorch/version.txt 2>/dev/null || echo 'unknown')" \
     && opencv_ver="$(pkg-config --modversion opencv4 2>/dev/null \
          || dpkg -l libopencv-dev 2>/dev/null | awk '/^ii/{print $3}' | head -1 \
          || echo 'unknown')" \
+    && if [ "${INSTALL_ZED_SDK}" = "1" ]; then zed_ver="${ZED_SDK_MAJOR}.${ZED_SDK_MINOR}"; else zed_ver="not_installed"; fi \
     && printf '%s\n' \
        "AI_DEVBOX_BASE_IMAGE=${BASE_IMAGE_URL}" \
        "AI_DEVBOX_GCC_VERSION=${GCC_VERSION}" \
@@ -157,10 +220,15 @@ RUN torch_ver="$(tr -d '[:space:]' < /opt/libtorch/version.txt 2>/dev/null || ec
        "AI_DEVBOX_CCACHE_MAXSIZE=${CCACHE_MAXSIZE}" \
        "AI_DEVBOX_TORCH_VERSION=${torch_ver}" \
        "AI_DEVBOX_OPENCV_VERSION=${opencv_ver}" \
+       "AI_DEVBOX_ZED_SDK_MAJOR=${ZED_SDK_MAJOR}" \
+       "AI_DEVBOX_ZED_SDK_MINOR=${ZED_SDK_MINOR}" \
+       "AI_DEVBOX_ZED_CUDA_MAJOR=${ZED_CUDA_MAJOR}" \
+       "AI_DEVBOX_ZED_VERSION=${zed_ver}" \
+       "AI_DEVBOX_ZED_GL=${ZED_GL}" \
        > /etc/ai-devbox-release
 
 # -----------------------------------------------------------------------------
-# 4. ENTRYPOINT
+# 6. ENTRYPOINT
 # -----------------------------------------------------------------------------
 RUN printf '%s\n' \
     'set print demangle on' \

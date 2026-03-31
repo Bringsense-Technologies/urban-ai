@@ -108,6 +108,120 @@ services:
       start_period: 20s
     command: ["sleep", "infinity"]
 
+  # ---------------------------------------------------------------------------
+  # GROUP 3: ZED SDK
+  # Extends advanced with Stereolabs ZED SDK 5.x for depth perception and
+  # camera support. Uses DeepStream 9.0 (Ubuntu 24.04, CUDA 12.6) by default.
+  # Requires --privileged for USB camera passthrough.
+  # ---------------------------------------------------------------------------
+  zed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE_URL: "${ZED_BASE_IMAGE_URL:-nvcr.io/nvidia/deepstream:9.0-triton-multiarch}"
+        GCC_VERSION: "${ZED_GCC_VERSION:-14}"
+        CMAKE_VERSION: "${ZED_CMAKE_VERSION:-3.31.0}"
+        CCACHE_MAXSIZE: "${CCACHE_MAXSIZE:-20G}"
+        TORCH_URL: "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.5.1%2Bcu121.zip"
+        TORCH_SHA256: "${TORCH_SHA256:-}"
+        REQUIRE_TORCH_SHA256: "${REQUIRE_TORCH_SHA256:-0}"
+        EIGEN_VERSION: "5.0.0"
+        SKIP_OS_UPGRADE: "${SKIP_OS_UPGRADE:-0}"
+        INSTALL_ZED_SDK: "1"
+        ZED_SDK_MAJOR: "${ZED_SDK_MAJOR:-5}"
+        ZED_SDK_MINOR: "${ZED_SDK_MINOR:-2}"
+        ZED_CUDA_MAJOR: "${ZED_CUDA_MAJOR:-12}"
+        ZED_GL: "0"
+
+    image: ai-devbox:zed
+    container_name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-zed
+    privileged: true
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+      - CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-1}
+      - AI_DEVBOX_BUILD_JOBS=${AI_DEVBOX_BUILD_JOBS:-1}
+      - CCACHE_DIR=/root/.ccache
+      - CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-20G}
+      - CONTAINER_NAME=${COMPOSE_PROJECT_NAME:-ai-devbox}-zed
+      - CONTAINER_IMAGE_NAME=ai-devbox:zed
+    volumes:
+      - ./:/root/project
+      - ccache-data:/root/.ccache
+      - zed-resources:/usr/local/zed/resources
+    healthcheck:
+      test: ["CMD-SHELL", "nvidia-smi >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    command: ["sleep", "infinity"]
+
+  # ---------------------------------------------------------------------------
+  # GROUP 4: ZED SDK with OpenGL / GUI tools
+  # Same as zed but also installs OpenGL libraries and ZED Explorer /
+  # ZED Depth Viewer prerequisites. Requires X11 forwarding on the host:
+  #   xhost +si:localuser:root
+  # ---------------------------------------------------------------------------
+  zed-gl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE_URL: "${ZED_BASE_IMAGE_URL:-nvcr.io/nvidia/deepstream:9.0-triton-multiarch}"
+        GCC_VERSION: "${ZED_GCC_VERSION:-14}"
+        CMAKE_VERSION: "${ZED_CMAKE_VERSION:-3.31.0}"
+        CCACHE_MAXSIZE: "${CCACHE_MAXSIZE:-20G}"
+        TORCH_URL: "https://download.pytorch.org/libtorch/cu121/libtorch-cxx11-abi-shared-with-deps-2.5.1%2Bcu121.zip"
+        TORCH_SHA256: "${TORCH_SHA256:-}"
+        REQUIRE_TORCH_SHA256: "${REQUIRE_TORCH_SHA256:-0}"
+        EIGEN_VERSION: "5.0.0"
+        SKIP_OS_UPGRADE: "${SKIP_OS_UPGRADE:-0}"
+        INSTALL_ZED_SDK: "1"
+        ZED_SDK_MAJOR: "${ZED_SDK_MAJOR:-5}"
+        ZED_SDK_MINOR: "${ZED_SDK_MINOR:-2}"
+        ZED_CUDA_MAJOR: "${ZED_CUDA_MAJOR:-12}"
+        ZED_GL: "1"
+
+    image: ai-devbox:zed-gl
+    container_name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-zed-gl
+    privileged: true
+    restart: unless-stopped
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility,graphics
+      - CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:-1}
+      - AI_DEVBOX_BUILD_JOBS=${AI_DEVBOX_BUILD_JOBS:-1}
+      - CCACHE_DIR=/root/.ccache
+      - CCACHE_MAXSIZE=${CCACHE_MAXSIZE:-20G}
+      - CONTAINER_NAME=${COMPOSE_PROJECT_NAME:-ai-devbox}-zed-gl
+      - CONTAINER_IMAGE_NAME=ai-devbox:zed-gl
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      - ./:/root/project
+      - ccache-data:/root/.ccache
+      - zed-resources:/usr/local/zed/resources
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    healthcheck:
+      test: ["CMD-SHELL", "nvidia-smi >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    command: ["sleep", "infinity"]
+
 volumes:
   ccache-data:
     name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-ccache
+  zed-resources:
+    name: ${COMPOSE_PROJECT_NAME:-ai-devbox}-zed-resources

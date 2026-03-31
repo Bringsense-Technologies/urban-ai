@@ -27,6 +27,8 @@ torch_version="unknown"
 opencv_version="unknown"
 eigen_version="unknown"
 ccache_maxsize="${CCACHE_MAXSIZE:-unknown}"
+zed_version="unknown"
+zed_gl="unknown"
 
 if [[ -f "${build_info_file}" ]]; then
   while IFS='=' read -r key value; do
@@ -38,6 +40,8 @@ if [[ -f "${build_info_file}" ]]; then
       AI_DEVBOX_TORCH_VERSION) torch_version="${value}" ;;
       AI_DEVBOX_OPENCV_VERSION) opencv_version="${value}" ;;
       AI_DEVBOX_EIGEN_VERSION) eigen_version="${value}" ;;
+      AI_DEVBOX_ZED_VERSION) zed_version="${value}" ;;
+      AI_DEVBOX_ZED_GL) zed_gl="${value}" ;;
       AI_DEVBOX_CCACHE_MAXSIZE)
         if [[ -z "${CCACHE_MAXSIZE:-}" ]]; then
           ccache_maxsize="${value}"
@@ -57,4 +61,6 @@ echo "LibTorch version: ${torch_version}"
 echo "LibTorch URL: ${torch_url}"
 echo "OpenCV version: ${opencv_version}"
 echo "Eigen version: ${eigen_version}"
+echo "ZED SDK version: ${zed_version}"
+echo "ZED GL: ${zed_gl}"
 echo "ccache max size: ${ccache_maxsize}"

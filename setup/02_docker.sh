@@ -10,8 +10,6 @@ resolve_docker_codename() {
     case "${VERSION_ID:-}" in
       24|24.*) codename="noble" ;;
       22|22.*) codename="jammy" ;;
-      20|20.*) codename="focal" ;;
-      18|18.*) codename="bionic" ;;
       *) codename="" ;;
     esac
   fi
@@ -25,8 +23,6 @@ resolve_docker_codename() {
     case "${VERSION_ID:-}" in
       24|24.*) codename="noble" ;;
       22|22.*) codename="jammy" ;;
-      20|20.*) codename="focal" ;;
-      18|18.*) codename="bionic" ;;
       *)
         echo "Docker apt repository does not support codename '${codename}'." >&2
         exit 1
