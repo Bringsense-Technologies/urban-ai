@@ -16,7 +16,7 @@ services:
         GCC_VERSION: "${ADVANCED_GCC_VERSION:-14}"
 
         # Latest CMake for Module support
-        CMAKE_VERSION: "${ADVANCED_CMAKE_VERSION:-3.31.0}"
+        CMAKE_VERSION: "${ADVANCED_CMAKE_VERSION:-4.2.2}"
         CCACHE_MAXSIZE: "${CCACHE_MAXSIZE:-20G}"
 
         # LibTorch Nightly/Latest (CUDA 12.x or 13.x if available)

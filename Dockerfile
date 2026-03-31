@@ -13,6 +13,7 @@ ARG ZED_CUDA_MAJOR=12
 # =============================================================================
 FROM ubuntu:24.04 AS downloader
 ARG CMAKE_VERSION
+ARG TARGETARCH
 ARG TORCH_URL
 # Optional SHA256 for LibTorch; if set, the download is verified.
 ARG TORCH_SHA256=""
@@ -28,13 +29,21 @@ RUN apt-get update \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# --- CMake: download and verify checksum from Kitware's own .sha256 file ---
+# --- CMake: download and verify checksum from Kitware's release manifest ---
 WORKDIR /downloads
-RUN wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh" \
-    && wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh.sha256" \
-    && sha256sum -c "cmake-${CMAKE_VERSION}-linux-x86_64.sh.sha256" \
-    && bash "cmake-${CMAKE_VERSION}-linux-x86_64.sh" --skip-license --prefix=/opt/cmake \
-    && rm "cmake-${CMAKE_VERSION}-linux-x86_64.sh" "cmake-${CMAKE_VERSION}-linux-x86_64.sh.sha256"
+RUN BUILD_ARCH="${TARGETARCH:-$(dpkg --print-architecture)}" \
+    && case "${BUILD_ARCH}" in \
+      amd64|x86_64) CMAKE_ARCH="x86_64" ;; \
+      arm64|aarch64) CMAKE_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${BUILD_ARCH} (TARGETARCH='${TARGETARCH}')" >&2; exit 1 ;; \
+    esac \
+    && CMAKE_INSTALLER="cmake-${CMAKE_VERSION}-linux-${CMAKE_ARCH}.sh" \
+    && wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_INSTALLER}" \
+    && wget -q "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-SHA-256.txt" \
+    && grep "  ${CMAKE_INSTALLER}$" "cmake-${CMAKE_VERSION}-SHA-256.txt" | sha256sum -c - \
+    && mkdir -p /opt/cmake \
+    && bash "${CMAKE_INSTALLER}" --skip-license --prefix=/opt/cmake \
+    && rm "${CMAKE_INSTALLER}" "cmake-${CMAKE_VERSION}-SHA-256.txt"
 
 # --- LibTorch: download, verify if TORCH_SHA256 provided ---
 RUN wget -q "${TORCH_URL}" -O libtorch.zip \
@@ -146,11 +155,12 @@ ENV PATH=/usr/lib/ccache:$PATH
 # Invalidates only when the corresponding ARG (CMAKE_VERSION / TORCH_URL /
 # EIGEN_VERSION) changes, not on every image rebuild.
 # -----------------------------------------------------------------------------
-COPY --from=downloader /opt/cmake /usr/local
+COPY --from=downloader /opt/cmake /opt/cmake
 COPY --from=downloader /opt/libtorch /opt/libtorch
 COPY --from=downloader /opt/eigen /opt/eigen
 
 # Environment variables for C++ tooling
+ENV PATH=/opt/cmake/bin:/usr/lib/ccache:$PATH
 ENV Torch_DIR=/opt/libtorch/share/cmake/Torch
 ENV LD_LIBRARY_PATH=/opt/libtorch/lib:$LD_LIBRARY_PATH
 

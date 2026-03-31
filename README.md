@@ -150,7 +150,7 @@ For reproducible builds, set a pinned base image reference and enable checksum e
 cp .env.example .env
 echo 'ADVANCED_BASE_IMAGE_URL=nvcr.io/nvidia/deepstream:9.0-triton-multiarch@sha256:<digest>' >> .env
 echo 'ADVANCED_GCC_VERSION=14' >> .env
-echo 'ADVANCED_CMAKE_VERSION=3.31.0' >> .env
+echo 'ADVANCED_CMAKE_VERSION=4.2.2' >> .env
 echo 'REQUIRE_TORCH_SHA256=1' >> .env
 ```
 
@@ -171,7 +171,7 @@ bash ./container/compose-build.sh advanced --no-cache
 | Ubuntu | 24.04 | from base image |
 | CUDA | 12.6 | from base image |
 | GCC | `14` | `ADVANCED_GCC_VERSION` |
-| CMake | `3.31.0` | `ADVANCED_CMAKE_VERSION` |
+| CMake | `4.2.2` | `ADVANCED_CMAKE_VERSION` |
 | LibTorch | `2.5.1+cu121` | PyTorch download URL |
 | Eigen | `5.0.0` | Git clone by tag |
 | OpenCV | `libopencv-dev` | Ubuntu package |
