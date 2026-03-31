@@ -2,7 +2,8 @@
 
 This repository provides a GPU-enabled C++ development stack based on NVIDIA DeepStream, with:
 
-- Two build targets (`stable` and `advanced`), with `stable` currently commented out in `docker-compose.yml`
+- One unified `advanced` service (C++ dev stack with optional ZED SDK and OpenGL GUI tools via build args)
+- ZED SDK 5.x support with Ubuntu-version-aware installer (auto-detected at build time)
 - Project root mapped from host <project> to container `/root/project`
 - C++ source folder mapped from host `<project>/source` to container `/root/project/source`
 - VS Code Dev Container support (`.devcontainer/devcontainer.json`)
@@ -23,13 +24,17 @@ This repository provides a GPU-enabled C++ development stack based on NVIDIA Dee
 - [4.1 Compose (recommended)](#41-compose-recommended)
 - [4.2 Equivalent `docker run`](#42-equivalent-docker-run)
 - [4.3 Numbered project launcher script](#43-numbered-project-launcher-script)
-- [5. Use from VS Code](#5-use-from-vs-code)
-- [6. Debugging notes](#6-debugging-notes)
-- [7. Build systems (CMake + Qbs)](#7-build-systems-cmake--qbs)
-- [8. ccache (shared across containers)](#8-ccache-shared-across-containers)
-- [9. Common commands](#9-common-commands)
-- [10. Container runtime info helper](#10-container-runtime-info-helper)
-- [11. Notes](#11-notes)
+- [5. ZED SDK support](#5-zed-sdk-support)
+- [5.1 Build with ZED SDK](#51-build-with-zed-sdk)
+- [5.2 Physical camera (USB)](#52-physical-camera-usb)
+- [5.3 GUI tools (OpenGL)](#53-gui-tools-opengl)
+- [6. Use from VS Code](#6-use-from-vs-code)
+- [7. Debugging notes](#7-debugging-notes)
+- [8. Build systems (CMake + Qbs)](#8-build-systems-cmake--qbs)
+- [9. ccache (shared across containers)](#9-ccache-shared-across-containers)
+- [10. Common commands](#10-common-commands)
+- [11. Container runtime info helper](#11-container-runtime-info-helper)
+- [12. Notes](#12-notes)
 
 ---
 
@@ -140,20 +145,13 @@ For reproducible builds, set a pinned base image reference and enable checksum e
 
 ```bash
 cp .env.example .env
-echo 'ADVANCED_BASE_IMAGE_URL=nvcr.io/nvidia/deepstream:8.0-triton-multiarch@sha256:<digest>' >> .env
+echo 'ADVANCED_BASE_IMAGE_URL=nvcr.io/nvidia/deepstream:9.0-triton-multiarch@sha256:<digest>' >> .env
 echo 'ADVANCED_GCC_VERSION=14' >> .env
 echo 'ADVANCED_CMAKE_VERSION=3.31.0' >> .env
 echo 'REQUIRE_TORCH_SHA256=1' >> .env
 ```
 
 Note: there is no separate `UBUNTU_VERSION` setting. The Ubuntu release inside the container comes from the selected base image.
-
-`stable` is currently commented out in `docker-compose.yml`.
-To use it again, uncomment the `stable` service block first, then build:
-
-```bash
-docker compose build stable
-```
 
 Examples with the helper:
 
@@ -164,16 +162,20 @@ bash ./container/compose-build.sh advanced --no-cache
 
 ### 3.1 Dependency matrix
 
-| Component | Advanced default | Source |
+| Component | advanced | Source |
 | --- | --- | --- |
-| Base image | `nvcr.io/nvidia/deepstream:8.0-triton-multiarch` | `ADVANCED_BASE_IMAGE_URL` build arg |
-| GCC | `14` | `ADVANCED_GCC_VERSION` build arg |
-| CMake | `3.31.0` | `ADVANCED_CMAKE_VERSION` build arg |
-| LibTorch | `2.5.1+cu121` archive URL | PyTorch download URL build arg |
+| Base image | `nvcr.io/nvidia/deepstream:9.0-triton-multiarch` | `ADVANCED_BASE_IMAGE_URL` |
+| Ubuntu | 24.04 | from base image |
+| CUDA | 12.6 | from base image |
+| GCC | `14` | `ADVANCED_GCC_VERSION` |
+| CMake | `3.31.0` | `ADVANCED_CMAKE_VERSION` |
+| LibTorch | `2.5.1+cu121` | PyTorch download URL |
 | Eigen | `5.0.0` | Git clone by tag |
-| OpenCV | `libopencv-dev` | Ubuntu package in runtime image |
-| Qbs | distro package | Ubuntu package in runtime image |
-| ccache size | `20G` | `CCACHE_MAXSIZE` build/runtime env |
+| OpenCV | `libopencv-dev` | Ubuntu package |
+| Qbs | distro package | Ubuntu package |
+| ZED SDK | optional — `INSTALL_ZED_SDK=1` | `ZED_SDK_MAJOR` / `ZED_SDK_MINOR` |
+| ZED GL libs | optional — `ZED_GL=1` (requires ZED SDK) | `ZED_GL` build arg |
+| ccache size | `20G` | `CCACHE_MAXSIZE` |
 
 ---
 
@@ -320,7 +322,111 @@ CMAKE_BUILD_PARALLEL_LEVEL=6 AI_DEVBOX_BUILD_JOBS=6 CCACHE_MAXSIZE=40G PROJECT_P
 
 ---
 
-## 5. Use from VS Code
+## 5. ZED SDK support
+
+ZED SDK integration is built into the single `advanced` service and controlled entirely by
+build-time ARGs. The container always runs with `privileged: true`, full driver capabilities,
+X11 forwarding, and the `zed-resources` volume — all of which are safe no-ops when ZED SDK
+is not installed.
+
+| Build ARG | Default | Effect |
+| --- | --- | --- |
+| `INSTALL_ZED_SDK` | `0` | `1` installs ZED SDK 5.x into the image |
+| `ZED_GL` | `0` | `1` adds OpenGL/GUI libs (ZED Explorer, Depth Viewer); requires `INSTALL_ZED_SDK=1` |
+| `ZED_SDK_MAJOR` | `5` | SDK major version |
+| `ZED_SDK_MINOR` | `2` | SDK minor version |
+| `ZED_CUDA_MAJOR` | `12` | CUDA major used by the installer |
+
+### 5.1 Build with ZED SDK
+
+Set ZED variables in `.env` (or rely on the defaults from `.env.example`):
+
+```bash
+cp .env.example .env
+# defaults: ZED_SDK_MAJOR=5, ZED_SDK_MINOR=2, ZED_CUDA_MAJOR=12
+```
+
+Build — plain C++ stack (no ZED SDK):
+
+```bash
+bash ./container/compose-build.sh advanced
+```
+
+Build with ZED SDK (headless, no GUI tools):
+
+```bash
+INSTALL_ZED_SDK=1 bash ./container/compose-build.sh advanced
+```
+
+Build with ZED SDK + OpenGL GUI tools:
+
+```bash
+INSTALL_ZED_SDK=1 ZED_GL=1 bash ./container/compose-build.sh advanced
+```
+
+Run:
+
+```bash
+bash ./container/compose-up.sh advanced
+```
+
+Open a shell:
+
+```bash
+docker exec -it ai-devbox-advanced /bin/bash
+```
+
+Using `container/start.sh`:
+
+```bash
+PROJECT_PREFIX=~/Development/MyProject ./container/start.sh 1
+```
+
+### 5.2 Physical camera (USB)
+
+The `advanced` container runs with `privileged: true`, which passes all host USB devices
+into the container. Verify the camera is seen inside the container:
+
+```bash
+lsusb -d 2b03:
+```
+
+A persistent named volume stores ZED AI models so they survive container recreation and
+avoid re-downloading and re-optimizing on every startup:
+
+- Volume name: `ai-devbox-zed-resources`
+- Mounted at: `/usr/local/zed/resources`
+
+To pre-populate models:
+
+```bash
+docker exec -it ai-devbox-advanced /usr/local/zed/tools/ZED_Diagnostic
+```
+
+### 5.3 GUI tools (OpenGL)
+
+When the image is built with `ZED_GL=1`, OpenGL libraries and ZED Explorer / ZED Depth Viewer
+prerequisites are included. Before starting the container, grant X11 access:
+
+```bash
+xhost +si:localuser:root
+```
+
+Then launch ZED Explorer from inside the container:
+
+```bash
+docker exec -it ai-devbox-advanced /usr/local/zed/tools/ZED\ Explorer
+```
+
+To restore X11 access restrictions after your session:
+
+```bash
+xhost -si:localuser:root
+```
+
+---
+
+## 6. Use from VS Code
 
 1. Open this repository in VS Code.
 2. Run: **Dev Containers: Rebuild and Reopen in Container**.
@@ -340,7 +446,7 @@ Recommended extensions are configured automatically:
 
 ---
 
-## 6. Debugging notes
+## 7. Debugging notes
 
 This stack is preconfigured for container debugging:
 
@@ -353,7 +459,7 @@ So C++ symbols appear demangled during debugging sessions.
 
 ---
 
-## 7. Build systems (CMake + Qbs)
+## 8. Build systems (CMake + Qbs)
 
 This image supports both CMake- and Qbs-based C++ projects.
 
@@ -417,7 +523,7 @@ qbs build -f your-project.qbs profile:gcc config:release --jobs "${AI_DEVBOX_BUI
 
 ---
 
-## 8. ccache (shared across containers)
+## 9. ccache (shared across containers)
 
 A named Docker volume is used:
 
@@ -442,12 +548,18 @@ ccache -C
 
 ---
 
-## 9. Common commands
+## 10. Common commands
 
 Bring up advanced service:
 
 ```bash
 bash ./container/compose-up.sh
+```
+
+Bring up zed service:
+
+```bash
+bash ./container/compose-up.sh zed
 ```
 
 Rebuild advanced image:
@@ -480,8 +592,6 @@ Stop all services:
 docker compose down
 ```
 
-Note: `stable` commands apply only after re-enabling the commented `stable` service in `docker-compose.yml`.
-
 Stop services and remove shared cache volume:
 
 ```bash
@@ -490,7 +600,7 @@ docker compose down -v
 
 ---
 
-## 10. Container runtime info helper
+## 11. Container runtime info helper
 
 A helper script is available to detect container runtime and print container/image metadata:
 
@@ -504,15 +614,19 @@ Output includes:
 - image name
 - base image reference
 - GCC, CMake, and Eigen versions
+- ZED SDK version and GL flag
 - ccache max size
 
 The metadata is embedded during image build via OCI labels and a small release file in the image, so no manual `.env` bookkeeping is required.
 
 ---
 
-## 11. Notes
+## 12. Notes
 
 - Container working directory is `/root/project`.
 - If NVIDIA runtime fails, recheck driver/toolkit installation and restart Docker.
 - If image tags (DeepStream/LibTorch) change upstream, update build args in `docker-compose.yml`.
 - `setup/01_nvidia_drivers.sh` accepts `NVIDIA_DRIVER_VERSION` and `NVIDIA_DRIVER_FLAVOR` (`open` or `proprietary`).
+- ZED SDK Ubuntu version is auto-detected from `/etc/os-release` at build time; do not pass `UBUNTU_RELEASE_YEAR` manually.
+- `cu121` LibTorch is compatible with any CUDA 12.x runtime. If a CUDA 13.x base image is ever used, update `TORCH_URL` to a `cu130` build.
+- ZED AI models are stored in the `ai-devbox-zed-resources` volume at `/usr/local/zed/resources` and survive container recreation.
