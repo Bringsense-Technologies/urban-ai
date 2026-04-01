@@ -629,6 +629,9 @@ The metadata is embedded during image build via OCI labels and a small release f
 The workflow `.github/workflows/publish.yml` automatically builds and pushes the image
 (with ZED SDK always enabled) to the **GitHub Container Registry (GHCR)**.
 
+Published image name is fixed to `ghcr.io/bringsense-technologies/urban-ai-next`.
+It is intentionally decoupled from the GitHub repository name.
+
 ### What gets built
 
 | Build arg | Value used in CI |
@@ -650,9 +653,9 @@ The workflow `.github/workflows/publish.yml` automatically builds and pushes the
 For a tag push of `v1.2.3`, the following tags are published to GHCR:
 
 ```
-ghcr.io/<org>/<repo>:1.2.3
-ghcr.io/<org>/<repo>:1.2
-ghcr.io/<org>/<repo>:latest
+ghcr.io/bringsense-technologies/urban-ai-next:1.2.3
+ghcr.io/bringsense-technologies/urban-ai-next:1.2
+ghcr.io/bringsense-technologies/urban-ai-next:latest
 ```
 
 ### Triggers
@@ -674,13 +677,13 @@ Then watch the **Actions → Publish** workflow in the GitHub UI.
 ### Pull the published image
 
 ```bash
-docker pull ghcr.io/<org>/<repo>:latest
+docker pull ghcr.io/bringsense-technologies/urban-ai-next:latest
 ```
 
 For GPU use:
 
 ```bash
-docker run --rm --gpus all ghcr.io/<org>/<repo>:latest nvidia-smi
+docker run --rm --gpus all ghcr.io/bringsense-technologies/urban-ai-next:latest nvidia-smi
 ```
 
 ### Authentication
