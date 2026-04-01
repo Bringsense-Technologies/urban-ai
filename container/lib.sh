@@ -79,5 +79,5 @@ compose_service_usage() {
   local script="${1:-$0}"
   echo "Usage: ${script} [compose-service]"
   echo "Example: ${script} advanced"
-  echo "If no service is provided, 'advanced' is used."
+  echo "If no service is provided, 'advanced' is going to be used."
 }

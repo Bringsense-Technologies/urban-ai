@@ -72,7 +72,7 @@ else
   container_name="${project_name_base}${number}"
 
   echo "Mode: current-directory fallback"
-  echo "PROJECT_PREFIX is not set; using current path: $project_path"
+  echo "PROJECT_PREFIX is not set; Using current path: $project_path"
 fi
 
 echo "Resolved container name: $container_name"
@@ -118,7 +118,7 @@ docker run -d \
   -v "${COMPOSE_PROJECT_NAME:-ai-devbox}-ccache:/root/.ccache" \
   "ai-devbox:advanced"
 
-echo "Started container: $container_name (image: ai-devbox:advanced)"
+echo "Started the container: $container_name (image: ai-devbox:advanced)"
 echo "Host path mapped to /root/project: $project_path"
 echo "Default build jobs in container: CMAKE_BUILD_PARALLEL_LEVEL=${cmake_parallel_level}, AI_DEVBOX_BUILD_JOBS=${ai_devbox_build_jobs}"
 echo "ccache max size in container: CCACHE_MAXSIZE=${ccache_maxsize}"
