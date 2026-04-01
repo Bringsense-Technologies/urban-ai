@@ -704,7 +704,42 @@ are rebuilt — significantly reducing build time after the first successful run
 
 ---
 
-## 13. Notes
+## 13. Consuming the published image in downstream repositories
+
+The `urban-ai-next` image is consumed by:
+
+- [video-player](https://github.com/Bringsense-Technologies/video-player)
+- [video-recorder](https://github.com/Bringsense-Technologies/video-recorder)
+
+Each downstream repo pins the image version via an `.env` file:
+
+```bash
+URBAN_AI_VERSION=0.0.5
+```
+
+To release a new image version and upgrade downstream repos:
+
+1. Push a new tag to this repository:
+   ```bash
+   git tag v0.0.6
+   git push origin v0.0.6
+   ```
+2. The **Actions → Publish** workflow builds and pushes `ghcr.io/bringsense-technologies/urban-ai-next:0.0.6`.
+3. In each downstream repo, update `.env`:
+   ```bash
+   URBAN_AI_VERSION=0.0.6
+   ```
+4. Restart the container in the downstream repo — the new image is pulled automatically:
+   ```bash
+   bash container/compose-stop.sh
+   bash container/compose-up.sh
+   ```
+
+Downstream repos do not need to clone or build `urban-ai` locally.
+
+---
+
+## 14. Notes
 
 - Container working directory is `/root/project`.
 - If NVIDIA runtime fails, recheck driver/toolkit installation and restart Docker.
